@@ -67,13 +67,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       const currentFilters = table.getState().columnFilters;
       const newFilterValues: Record<string, any> = {};
       
+      // First set all values to empty/default
+      filterableColumns.forEach(column => {
+        newFilterValues[column.accessorKey] = '';
+      });
+      
+      // Then apply any active filters from the table state
       currentFilters.forEach((filter: any) => {
         newFilterValues[filter.id] = filter.value;
       });
       
       setFilterValues(newFilterValues);
     }
-  }, [isTableReady, table]);
+  }, [isTableReady, table, filterableColumns]);
 
   // Define the types of filters
   const getFilterComponent = (columnType: string, column: any, columnInstance: any) => {
@@ -90,7 +96,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
           size="small"
           fullWidth
           label={column.header}
-          value={filterValue || ''}
+          value={filterValue === undefined || filterValue === null ? '' : filterValue}
           onChange={(e) => {
             const newValue = e.target.value;
             // Update local state
@@ -129,7 +135,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <FormControl fullWidth size="small">
           <InputLabel>{column.header}</InputLabel>
           <Select
-            value={filterValue || ''}
+            value={filterValue === undefined || filterValue === null ? '' : filterValue}
             label={column.header}
             onChange={(e) => {
               const newValue = e.target.value;
@@ -227,7 +233,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         size="small"
         fullWidth
         label={column.header}
-        value={filterValue || ''}
+        value={filterValue === undefined || filterValue === null ? '' : filterValue}
         onChange={(e) => {
           const newValue = e.target.value;
           // Update local state
@@ -329,6 +335,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
     
     // Force immediate filtering to show all rows
     table.getFilteredRowModel();
+
+    // Explicitly clear all column filter values in the table
+    filterableColumns.forEach(column => {
+      const columnInstance = table.getColumn(column.accessorKey);
+      if (columnInstance) {
+        columnInstance.setFilterValue('');
+      }
+    });
     
     // Remove from localStorage
     localStorage.removeItem('tableFilters');
@@ -391,14 +405,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <Typography variant="subtitle1">
           Filters
         </Typography>
-        {/* <IconButton 
-          onClick={handleResetFilters}
-          title="Clear all filters"
-          color="error"
-          sx={{ fontSize: '15px' }}
-        >
-          Clear
-        </IconButton> */}
       </Box>
       
       <FormGroup sx={{ gap: 2 }}>

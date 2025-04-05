@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -15,22 +15,17 @@ import {
   useMediaQuery,
   IconButton,
   Drawer,
-  SelectChangeEvent,
   TextField,
   Slider,
-  Stack,
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  FormControlLabel,
-  Checkbox,
   CircularProgress,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
 import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
-import DeleteIcon from '@mui/icons-material/Delete';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 
@@ -60,10 +55,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
   // Get only filterable columns
   const filterableColumns = columns.filter(column => 
     column.enableColumnFilter !== false && 
-    column.accessorKey && 
-    column.accessorKey !== 'id' && // Exclude ID column
-    column.header !== 'ID' && // Also check for header named 'ID'
-    column.header !== 'Id' // Also check for header named 'Id'
+    column.accessorKey
   );
 
   // Check if table instance is available
@@ -282,19 +274,6 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
     }
   }, [isTableReady, table]);
 
-  // Handle adding a group by selection
-  // const handleAddGroupBy = (event: SelectChangeEvent<string>) => {
-  //   const value = event.target.value;
-  //   if (value && !groupBySelections.includes(value)) {
-  //     setGroupBySelections([...groupBySelections, value]);
-  //   }
-  // };
-
-  // // Handle removing a group by selection
-  // const handleRemoveGroupBy = (value: string) => {
-  //   setGroupBySelections(groupBySelections.filter(item => item !== value));
-  // };
-
   // Handle search button click
   const handleSearch = () => {
     if (isTableReady) {
@@ -406,60 +385,20 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
   // Filters content
   const filtersContent = !isTableReady ? loadingContent : (
     <>
-      {/* Group By Section */}
-      <Box sx={{ mb: 3 }}>
-        {/* <Typography variant="subtitle1" sx={{ mb: 1 }}>
-          Group By
-        </Typography>
-        <FormControl fullWidth size="small" sx={{ mb: 1 }}>
-          <InputLabel>Grouping</InputLabel>
-          <Select
-            value=""
-            label="Grouping"
-            onChange={handleAddGroupBy}
-          >
-            {filterableColumns.map((column) => (
-              <MenuItem 
-                key={column.accessorKey}
-                value={column.accessorKey}
-                disabled={groupBySelections.includes(column.accessorKey)}
-              >
-                {column.header}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl> */}
-        
-        {/* <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-          {groupBySelections.map((selection) => {
-            const column = columns.find(col => col.accessorKey === selection);
-            return (
-              <Chip 
-                key={selection}
-                label={column?.header || selection}
-                onDelete={() => handleRemoveGroupBy(selection)}
-                size="small"
-              />
-            );
-          })}
-        </Box> */}
-      </Box>
-      
-      {/* <Divider sx={{ mb: 2 }} /> */}
       
       {/* Filters Section */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="subtitle1">
           Filters
         </Typography>
-        <IconButton 
-          size="small" 
+        {/* <IconButton 
           onClick={handleResetFilters}
           title="Clear all filters"
           color="error"
+          sx={{ fontSize: '15px' }}
         >
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+          Clear
+        </IconButton> */}
       </Box>
       
       <FormGroup sx={{ gap: 2 }}>
@@ -533,6 +472,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <Typography variant="h6" fontWeight="bold">
           {title}
         </Typography>
+        <IconButton 
+          onClick={handleResetFilters}
+          title="Clear all filters"
+          color="error"
+          sx={{ fontSize: '15px' }}
+          style={{ marginLeft: 'auto' }}
+        >
+          Clear
+        </IconButton> 
         <Box>
           {isMobile && (
             <IconButton onClick={() => setDrawerOpen(false)} size="small">

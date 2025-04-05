@@ -12,7 +12,6 @@ import {
   IconButton,
   Drawer,
   TextField,
-  Slider,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -66,10 +65,9 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       
       // First set all values to empty/default
       filterableColumns.forEach(column => {
-        // Initialize range filters with [min, max] by default
+        // Initialize numeric filters with empty value
         if (column.filterVariant === 'range' || getFilterType(column) === 'range') {
-          // We'll set proper min/max values when the component renders
-          newFilterValues[column.accessorKey] = null;
+          newFilterValues[column.accessorKey] = '';
         } else {
           newFilterValues[column.accessorKey] = '';
         }
@@ -158,16 +156,16 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <Autocomplete
           value={filterValue === undefined || filterValue === null ? null : filterValue}
           onChange={(_, newValue) => {
-              // Update local state
-              setFilterValues(prev => ({
-                ...prev,
-                [columnId]: newValue
-              }));
+            // Update local state
+            setFilterValues(prev => ({
+              ...prev,
+              [columnId]: newValue
+            }));
             // Set the filter value - empty string is used to clear filter
             columnInstance.setFilterValue(newValue === null ? '' : newValue);
-              // Force immediate filtering
-              table.getFilteredRowModel();
-            }}
+            // Force immediate filtering
+            table.getFilteredRowModel();
+          }}
           options={uniqueValues}
           renderInput={(params) => (
             <TextField
@@ -209,102 +207,67 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       );
     }
     
-    // Handle range filters for numeric data
+    // Handle numeric filters (replacing range filters)
     if (columnType === 'range') {
-      // Get min and max values from the entire data set for this column
-      let min = 0;
-      let max = 100;
-      
-      if (isTableReady) {
-        // Get all rows before any filtering
-        const allRows = table.getCoreRowModel().rows;
-        
-        // Extract all values from this column
-        const allValues = allRows
-          .map((row: any) => row.getValue(column.accessorKey))
-          .filter((val: any) => val !== null && val !== undefined);
-        
-        if (allValues.length > 0) {
-          min = Math.min(...allValues);
-          max = Math.max(...allValues);
-        }
-      }
-      
-      // Initialize range filter value
-      const rangeValue = filterValue || [min, max];
-      
       return (
-        <Box sx={{ px: 2, mt: 1 }}>
-          <Typography variant="body2" gutterBottom>
-            {column.header}
-          </Typography>
-          
-          <Box sx={{ px: 1 }}>
-            <Slider
-              value={rangeValue}
-              onChange={(_, newValue: number | number[]) => {
-                // Update local state
-                setFilterValues(prev => ({
-                  ...prev,
-                  [columnId]: newValue
-                }));
-                // Set the filter value
-                columnInstance.setFilterValue(newValue);
-                // Force immediate filtering
-                table.getFilteredRowModel();
-              }}
-              valueLabelDisplay="auto"
-              min={min}
-              max={max}
-              marks
-              getAriaLabel={() => `${column.header} range`}
-            />
-            
-            {/* Add min/max input fields */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, gap: 2 }}>
-              <TextField
+        <TextField
+          size="small"
+          fullWidth
+          label={`${column.header}`}
+          type="number"
+          value={filterValue === undefined || filterValue === null ? '' : filterValue}
+          onChange={(e) => {
+            const newValue = e.target.value === '' ? '' : Number(e.target.value);
+            // Update local state
+            setFilterValues(prev => ({
+              ...prev,
+              [columnId]: newValue
+            }));
+            // Set the filter value
+            columnInstance.setFilterValue(newValue);
+            // Ensure filter function is set to range
+            if (column.filterFn !== 'range') {
+              columnInstance.setFilterFn('range');
+            }
+            // Force immediate filtering
+            table.getFilteredRowModel();
+          }}
+          variant="outlined"
+          placeholder="Enter value"
+          InputProps={{
+            endAdornment: filterValue ? (
+              <IconButton
                 size="small"
-                type="number"
-                label="Min"
-                value={rangeValue[0]}
-                onChange={(e) => {
-                  const newValue = [parseFloat(e.target.value), rangeValue[1]];
-                  // Update local state
+                onClick={() => {
+                  // Clear the filter
                   setFilterValues(prev => ({
                     ...prev,
-                    [columnId]: newValue
+                    [columnId]: ''
                   }));
-                  // Set the filter value
-                  columnInstance.setFilterValue(newValue);
-                  // Force immediate filtering
+                  columnInstance.setFilterValue('');
                   table.getFilteredRowModel();
                 }}
-                InputProps={{ inputProps: { min, max: rangeValue[1] } }}
-                sx={{ width: '45%' }}
-              />
-              <TextField
-                size="small"
-                type="number"
-                label="Max"
-                value={rangeValue[1]}
-                onChange={(e) => {
-                  const newValue = [rangeValue[0], parseFloat(e.target.value)];
-                  // Update local state
-                  setFilterValues(prev => ({
-                    ...prev,
-                    [columnId]: newValue
-                  }));
-                  // Set the filter value
-                  columnInstance.setFilterValue(newValue);
-                  // Force immediate filtering
-                  table.getFilteredRowModel();
-                }}
-                InputProps={{ inputProps: { min: rangeValue[0], max } }}
-                sx={{ width: '45%' }}
-              />
-            </Box>
-          </Box>
-        </Box>
+                edge="end"
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            ) : null,
+            inputProps: { min: 0 }
+          }}
+          sx={{
+            '& input[type=number]': {
+              MozAppearance: 'textfield',
+            },
+            '& input[type=number]::-webkit-outer-spin-button': {
+              WebkitAppearance: 'none',
+              margin: 0,
+            },
+            '& input[type=number]::-webkit-inner-spin-button': {
+              WebkitAppearance: 'none',
+              margin: 0,
+            },
+          }}
+        />
       );
     }
     
@@ -442,7 +405,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
     // First check if the column has a specified filter variant
     if (column.filterVariant) return column.filterVariant;
     
-    // Check if it's a specific column that should be a range filter (like age)
+    // Check if it's a specific column that should be a numeric filter (like age)
     const numericColumns = ['age', 'price', 'amount', 'quantity'];
     if (numericColumns.includes(column.accessorKey.toLowerCase())) {
       return 'range';

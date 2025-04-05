@@ -119,12 +119,30 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
           .toLowerCase()
           .includes(String(filterValue).toLowerCase()),
       range: (row, id, filterValue) => {
+        // Handle empty values - show all rows
+        if (filterValue === undefined || filterValue === null || filterValue === '') {
+          return true;
+        }
+
+        const value = Number(row.getValue(id));
+        
+        // If value is NaN, don't filter this row
+        if (isNaN(value)) {
+          return true;
+        }
+        
         // Handle range filter values (for numeric fields like age)
         if (Array.isArray(filterValue) && filterValue.length === 2) {
-          const value = Number(row.getValue(id));
           const [min, max] = filterValue;
-          return !isNaN(value) && value >= min && value <= max;
+          return value >= min && value <= max;
         }
+        
+        // Handle single numeric value (treat as minimum threshold ≥)
+        if (typeof filterValue === 'number') {
+          return value >= filterValue;
+        }
+        
+        // If filter format is not recognized, don't filter
         return true;
       },
     },

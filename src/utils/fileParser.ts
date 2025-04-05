@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { TableColumn, TableData } from '../types';
-import { createColumn, convertToTableData, extractColumns } from './tableUtils';
+import { createColumn, convertToTableData, extractColumns, extractColumnsInOrder } from './tableUtils';
 
 interface ParsedResult {
   data: TableData[];
@@ -43,8 +43,8 @@ const parseCSV = (file: File): Promise<ParsedResult> => {
           const parsedData = results.data as Record<string, any>[];
           const data = convertToTableData(parsedData);
           
-          // Extract columns from the data
-          const columns = extractColumns(data, ['id']);
+          // Extract columns from the data, preserving the order from the headers
+          const columns = extractColumnsInOrder(data, results.meta.fields || [], ['id']);
           
           resolve({ data, columns });
         } catch (error) {
@@ -80,14 +80,28 @@ const parseExcel = async (file: File): Promise<ParsedResult> => {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         
+        // Get header row to determine column order
+        const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+        const headerRow = range.s.r; // First row
+        const headers: string[] = [];
+        
+        // Extract headers to maintain column order
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: headerRow, c: col });
+          const cell = worksheet[cellAddress];
+          if (cell && cell.v) {
+            headers.push(String(cell.v));
+          }
+        }
+        
         // Convert to JSON with proper type casting
         const jsonData = XLSX.utils.sheet_to_json(worksheet) as Record<string, any>[];
         
         // Convert to TableData format
         const tableData = convertToTableData(jsonData);
         
-        // Extract columns
-        const columns = extractColumns(tableData, ['id']);
+        // Extract columns in the order of the headers
+        const columns = extractColumnsInOrder(tableData, headers, ['id']);
         
         resolve({ data: tableData, columns });
       } catch (error) {

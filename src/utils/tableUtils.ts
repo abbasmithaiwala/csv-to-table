@@ -59,4 +59,29 @@ export const extractColumns = <T extends TableData>(
       key as keyof T & string,
       key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
     ));
+};
+
+/**
+ * Extract column definitions while preserving the order of fields
+ * 
+ * @param data Sample data to extract column definitions from
+ * @param fields Array of field names in the desired order
+ * @param exclude Optional array of field names to exclude
+ * @returns Array of TableColumn column definitions in the same order as fields
+ */
+export const extractColumnsInOrder = <T extends TableData>(
+  data: T[],
+  fields: string[],
+  exclude: string[] = []
+): TableColumn<T>[] => {
+  if (!data.length) return [];
+  
+  // Filter out excluded fields from the ordered fields array
+  const orderedFields = fields.filter(field => !exclude.includes(field));
+  
+  // Create column definitions in the specified order
+  return orderedFields.map(key => createColumn<T>(
+    key as keyof T & string,
+    key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')
+  ));
 }; 

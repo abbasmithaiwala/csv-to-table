@@ -413,31 +413,28 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
   // Filters content
   const filtersContent = !isTableReady ? loadingContent : (
     <>
-      
-      {/* Filters Section */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="subtitle1">
-          Filters
-        </Typography>
-      </Box>
-      
       <FormGroup sx={{ gap: 2 }}>
-        {filterableColumns.map((column) => {
-          // Get the column instance from the table
-          const columnInstance = table.getColumn(column.accessorKey);
-          
-          if (!columnInstance) return null;
-          
-          // Determine the filter type
-          const filterType = getFilterType(column);
-          
-          // Render the appropriate filter component
-          return (
-            <Box key={column.accessorKey} sx={{ mb: 2 }}>
-              {getFilterComponent(filterType, column, columnInstance)}
-            </Box>
-          );
-        })}
+        {columns
+          .filter(column => 
+            column.enableColumnFilter !== false && 
+            column.accessorKey
+          )
+          .map((column) => {
+            // Get the column instance from the table
+            const columnInstance = table.getColumn(column.accessorKey);
+            
+            if (!columnInstance) return null;
+            
+            // Determine the filter type
+            const filterType = getFilterType(column);
+            
+            // Render the appropriate filter component
+            return (
+              <Box key={column.accessorKey} sx={{ mb: 2 }}>
+                {getFilterComponent(filterType, column, columnInstance)}
+              </Box>
+            );
+          })}
       </FormGroup>
     </>
   );

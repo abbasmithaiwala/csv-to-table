@@ -78,6 +78,10 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     enableColumnFilterModes: true,
     enableFilterMatchHighlighting: false,
     columnFilterDisplayMode: 'popover',
+    // Force column order to match the order they were defined in
+    state: {
+      columnOrder: columnsWithFilterOptions.map(col => col.accessorKey as string),
+    },
     filterFns: {
       startsWith: (row, id, filterValue) => 
         String(row.getValue(id))

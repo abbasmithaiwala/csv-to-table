@@ -11,10 +11,6 @@ export const TableDemo: React.FC = () => {
   
   // Define columns
   const columns = useMemo<TableColumn[]>(() => [
-    createColumn('id', 'ID', { 
-      enableSorting: true,
-      size: 50,
-    }),
     createColumn('firstName', 'First Name', { 
       enableSorting: true,
       enableColumnFilter: true,
@@ -42,9 +38,9 @@ export const TableDemo: React.FC = () => {
   
   return (
     <Box sx={{ p: { xs: 1, md: 3 } }}>
-      <Typography variant="h4" sx={{ mb: 3 }}>
+      {/* <Typography variant="h4" sx={{ mb: 3 }}>
         Personnel Data Table
-      </Typography>
+      </Typography> */}
 
       <FilterableDataTable 
         data={data}

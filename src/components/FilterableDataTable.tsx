@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
 import { MRT_ColumnDef } from 'material-react-table';
 import { DataTable, DataTableProps } from './DataTable';
@@ -7,6 +7,7 @@ import { FilterPanel } from './FilterPanel';
 export interface FilterableDataTableProps<TData extends Record<string, any>> extends DataTableProps<TData> {
   showFilterPanel?: boolean;
   filterPanelTitle?: string;
+  initialColumnVisibility?: any;
 }
 
 export function FilterableDataTable<TData extends Record<string, any>>(
@@ -17,8 +18,25 @@ export function FilterableDataTable<TData extends Record<string, any>>(
     columns,
     showFilterPanel = true,
     filterPanelTitle,
+    initialColumnVisibility,
     ...otherProps
   } = props;
+
+  // State to store initial column filters from localStorage
+  const [initialColumnFilters, setInitialColumnFilters] = useState<any[]>([]);
+   
+  // Load saved filters on component mount
+  useEffect(() => {
+    try {
+      const savedFilters = localStorage.getItem('tableFilters');
+      if (savedFilters) {
+        const parsedFilters = JSON.parse(savedFilters);
+        setInitialColumnFilters(parsedFilters);
+      }
+    } catch (error) {
+      console.error('Error loading saved filters:', error);
+    }
+  }, []);
 
   // Reference to the table instance, will be updated when the table is rendered
   const tableInstanceRef = React.useRef<any>(null);
@@ -26,6 +44,19 @@ export function FilterableDataTable<TData extends Record<string, any>>(
   // Function to update the table instance reference
   const updateTableInstanceRef = (tableInstance: any) => {
     tableInstanceRef.current = tableInstance;
+    
+    // Apply initial filters when table instance is available
+    if (tableInstance && initialColumnFilters.length > 0) {
+      initialColumnFilters.forEach((filter: any) => {
+        const column = tableInstance.getColumn(filter.id);
+        if (column) {
+          column.setFilterValue(filter.value);
+        }
+      });
+      
+      // Force immediate filtering
+      tableInstance.getFilteredRowModel();
+    }
   };
 
   // Force re-render when table instance changes
@@ -65,6 +96,8 @@ export function FilterableDataTable<TData extends Record<string, any>>(
         <DataTable 
           data={data}
           columns={columns}
+          initialColumnFilters={initialColumnFilters}
+          initialColumnVisibility={initialColumnVisibility}
           {...otherProps}
           onTableInstanceChange={updateTableInstanceRef}
         />

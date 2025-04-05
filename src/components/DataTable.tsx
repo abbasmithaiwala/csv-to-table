@@ -14,6 +14,8 @@ export interface DataTableProps<TData extends Record<string, any>> {
   enableColumnResizing?: boolean;
   enableHiding?: boolean;
   enableGrouping?: boolean;
+  initialColumnFilters?: any[];
+  initialColumnVisibility?: Record<string, boolean>;
   renderTopToolbarCustomActions?: (props: { table: any }) => React.ReactNode;
   onTableInstanceChange?: (tableInstance: any) => void;
 }
@@ -31,12 +33,21 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     enableColumnResizing = true,
     enableHiding = true,
     enableGrouping = false,
+    initialColumnFilters = [],
+    initialColumnVisibility = {},
     renderTopToolbarCustomActions,
     onTableInstanceChange,
   } = props;
 
+  // Create columns with proper filter options
+  const columnsWithFilterOptions = columns.map(column => ({
+    ...column,
+    filterFn: 'fuzzy', // default filter function
+    enableColumnFilter: true,
+  }));
+
   const table = useMaterialReactTable({
-    columns,
+    columns: columnsWithFilterOptions,
     data,
     enableRowSelection,
     enableColumnFilters,
@@ -47,10 +58,39 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     enableColumnResizing,
     enableHiding,
     enableGrouping,
+    // These enable actual filtering (not just highlighting)
+    enableFilters: true,
+    enableColumnFilterModes: true,
+    columnFilterDisplayMode: 'popover',
+    filterFns: {
+      startsWith: (row, id, filterValue) => 
+        String(row.getValue(id))
+          .toLowerCase()
+          .startsWith(String(filterValue).toLowerCase()),
+      endsWith: (row, id, filterValue) => 
+        String(row.getValue(id))
+          .toLowerCase()
+          .endsWith(String(filterValue).toLowerCase()),
+      contains: (row, id, filterValue) => 
+        String(row.getValue(id))
+          .toLowerCase()
+          .includes(String(filterValue).toLowerCase()),
+      equals: (row, id, filterValue) => 
+        String(row.getValue(id))
+          .toLowerCase() === String(filterValue).toLowerCase(),
+      fuzzy: (row, id, filterValue) => 
+        String(row.getValue(id))
+          .toLowerCase()
+          .includes(String(filterValue).toLowerCase()),
+    },
     initialState: { 
       showGlobalFilter: enableGlobalFilter,
       density: 'compact',
+      columnFilters: initialColumnFilters,
+      columnVisibility: initialColumnVisibility,
     },
+    // Display only filtered rows (important!)
+    manualFiltering: false,
     layoutMode: enableColumnResizing ? 'grid-no-grow' : 'semantic',
     positionToolbarAlertBanner: 'bottom',
     muiTableContainerProps: {

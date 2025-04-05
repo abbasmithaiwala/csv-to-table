@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
-import { MRT_ColumnDef } from 'material-react-table';
 import { DataTable, DataTableProps } from './DataTable';
 import { FilterPanel } from './FilterPanel';
 

@@ -11,7 +11,7 @@ import {
 } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { TableDemo } from './pages/TableDemo';
+import { Index } from './pages/Index';
 import './App.css';
 
 function App() {
@@ -44,7 +44,7 @@ function App() {
             </IconButton>
           </Toolbar>
         </AppBar>
-        <TableDemo />
+        <Index />
       </Box>
     </ThemeProvider>
   );

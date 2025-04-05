@@ -5,7 +5,7 @@ import { TableColumn, TableData } from '../types';
 import { createMockPersonData } from '../utils/mockData';
 import { createColumn } from '../utils/tableUtils';
 
-export const TableDemo: React.FC = () => {
+export const Index: React.FC = () => {
   // Generate mock data
   const data = useMemo(() => createMockPersonData(100), []);
   

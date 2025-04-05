@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
-import { Box, Paper } from '@mui/material';
+import { Paper } from '@mui/material';
 
 export interface DataTableProps<TData extends Record<string, any>> {
   data: TData[];
@@ -113,6 +113,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       density: 'compact',
       columnFilters: initialColumnFilters,
       columnVisibility: initialColumnVisibility,
+      sorting: columns.length > 0 ? [{ id: columns[0].accessorKey as string, desc: false }] : [],
     },
     // Display only filtered rows (important!)
     manualFiltering: false,

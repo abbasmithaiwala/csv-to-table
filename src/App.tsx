@@ -21,6 +21,9 @@ function App() {
     palette: {
       mode: darkMode ? 'dark' : 'light',
     },
+    typography: {
+      fontFamily: '"Outfit", system-ui, Avenir, Helvetica, Arial, sans-serif',
+    },
   });
 
   return (

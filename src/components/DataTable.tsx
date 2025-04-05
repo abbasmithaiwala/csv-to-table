@@ -61,6 +61,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     // These enable actual filtering (not just highlighting)
     enableFilters: true,
     enableColumnFilterModes: true,
+    enableFilterMatchHighlighting: false,
     columnFilterDisplayMode: 'popover',
     filterFns: {
       startsWith: (row, id, filterValue) => 

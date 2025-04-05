@@ -59,7 +59,7 @@ const Upload: React.FC = () => {
 
       // Navigate to the index page
       setTimeout(() => {
-        navigate('/');
+        window.location.href = '/';
       }, 1000);
     } catch (err) {
       console.error('Error parsing file:', err);
@@ -154,7 +154,7 @@ const Upload: React.FC = () => {
           <Button
             variant="outlined"
             startIcon={<TableViewIcon />}
-            onClick={() => navigate('/')}
+            onClick={() => window.location.href = '/'}
             disabled={isLoading}
           >
             Go to Data Table

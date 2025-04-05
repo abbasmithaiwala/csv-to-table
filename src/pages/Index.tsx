@@ -1,9 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Button, Typography, Paper, Stack } from '@mui/material';
 import { FilterableDataTable } from '../components/FilterableDataTable';
 import { TableColumn, TableData } from '../types';
-import { createMockPersonData } from '../utils/mockData';
-import { createColumn } from '../utils/tableUtils';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,7 +9,6 @@ export const Index: React.FC = () => {
   const navigate = useNavigate();
   const [storedData, setStoredData] = useState<TableData[] | null>(null);
   const [storedColumns, setStoredColumns] = useState<TableColumn[] | null>(null);
-  const [isUsingMockData, setIsUsingMockData] = useState(true);
 
   // Load data from localStorage if available
   useEffect(() => {
@@ -22,120 +19,67 @@ export const Index: React.FC = () => {
       if (savedData && savedColumns) {
         setStoredData(JSON.parse(savedData));
         setStoredColumns(JSON.parse(savedColumns));
-        setIsUsingMockData(false);
+      } else {
+        // Redirect to upload page if no data is available
+        window.location.href = '/upload';
       }
     } catch (error) {
       console.error('Error loading saved data:', error);
+      // Redirect to upload page if there's an error loading data
+      window.location.href = '/upload';
     }
-  }, []);
+  }, [navigate]);
 
-  // Generate mock data if no stored data
-  const mockData = useMemo(() => createMockPersonData(100), []);
-  
-  // Define mock columns
-  const mockColumns = useMemo<TableColumn[]>(() => [
-    createColumn('firstName', 'First Name', { 
-      enableSorting: true,
-      enableColumnFilter: true,
-    }),
-    createColumn('lastName', 'Last Name', { 
-      enableSorting: true,
-      enableColumnFilter: true,
-    }),
-    createColumn('email', 'Email', { 
-      enableSorting: true,
-      enableColumnFilter: true,
-      size: 250,
-    }),
-    createColumn('age', 'Age', { 
-      enableSorting: true,
-      enableColumnFilter: true,
-      filterVariant: 'range',
-      filterFn: 'range',
-    }),
-    createColumn('city', 'City', { 
-      enableColumnFilter: true,
-    }),
-    createColumn('state', 'State', { 
-      enableColumnFilter: true,
-    }),
-  ], []);
-
-  // Use stored data or mock data
-  const data = storedData || mockData;
-  const columns = storedColumns || mockColumns;
-  
-  // Clear stored data and reload page
+  // Clear stored data and navigate to upload page
   const handleClearData = () => {
     localStorage.removeItem('tableData');
     localStorage.removeItem('tableColumns');
-    window.location.reload();
+    localStorage.removeItem('tableFilters');
+    window.location.href = '/upload';
   };
+  
+  // If no data is available, show nothing (will redirect to upload)
+  if (!storedData || !storedColumns) {
+    return null;
+  }
   
   return (
     <Box sx={{ p: { xs: 1, md: 3 } }}>
-      {isUsingMockData ? (
-        <Paper 
-          elevation={1} 
-          sx={{ 
-            p: 2, 
-            mb: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: 2
-          }}
-        >
-          <Typography variant="body1">
-            Currently using mock data. Upload a CSV or Excel file to see your own data.
-          </Typography>
+      <Paper 
+        elevation={1} 
+        sx={{ 
+          p: 2, 
+          mb: 2, 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: 2
+        }}
+      >
+        <Typography variant="body1">
+          Using uploaded data: {storedData.length} rows
+        </Typography>
+        <Stack direction="row" spacing={2}>
+          <Button 
+            variant="outlined" 
+            onClick={handleClearData}
+          >
+            Reset Data
+          </Button>
           <Button 
             variant="contained" 
-            color="primary"
             startIcon={<UploadFileIcon />}
-            onClick={() => navigate('/upload')}
+            onClick={() => window.location.href = '/upload'}
           >
-            Upload Data
+            Upload New Data
           </Button>
-        </Paper>
-      ) : (
-        <Paper 
-          elevation={1} 
-          sx={{ 
-            p: 2, 
-            mb: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: 2
-          }}
-        >
-          <Typography variant="body1">
-            Using uploaded data: {data.length} rows
-          </Typography>
-          <Stack direction="row" spacing={2}>
-            <Button 
-              variant="outlined" 
-              onClick={handleClearData}
-            >
-              Reset Data
-            </Button>
-            <Button 
-              variant="contained" 
-              startIcon={<UploadFileIcon />}
-              onClick={() => navigate('/upload')}
-            >
-              Upload New Data
-            </Button>
-          </Stack>
-        </Paper>
-      )}
+        </Stack>
+      </Paper>
 
       <FilterableDataTable 
-        data={data}
-        columns={columns}
+        data={storedData}
+        columns={storedColumns}
         enableRowSelection
         enableColumnFilters
         enableGlobalFilter
@@ -149,7 +93,7 @@ export const Index: React.FC = () => {
           return (
             <Box sx={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <Typography variant="h6" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
-                {isUsingMockData ? 'Personnel Data' : 'Uploaded Data'}
+                Uploaded Data
               </Typography>
               
               <Button

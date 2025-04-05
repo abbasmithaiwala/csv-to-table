@@ -5,10 +5,6 @@ import {
   Button,
   Paper,
   Divider,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   FormGroup,
   Chip,
   useTheme,
@@ -21,6 +17,7 @@ import {
   AccordionSummary,
   AccordionDetails,
   CircularProgress,
+  Autocomplete,
 } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import CloseIcon from '@mui/icons-material/Close';
@@ -116,6 +113,26 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             table.getFilteredRowModel();
           }}
           variant="outlined"
+          placeholder="Type to filter..."
+          InputProps={{
+            endAdornment: filterValue ? (
+              <IconButton
+                size="small"
+                onClick={() => {
+                  // Clear the filter
+                  setFilterValues(prev => ({
+                    ...prev,
+                    [columnId]: ''
+                  }));
+                  columnInstance.setFilterValue('');
+                  table.getFilteredRowModel();
+                }}
+                edge="end"
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            ) : null
+          }}
         />
       );
     }
@@ -138,47 +155,57 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       }
       
       return (
-        <FormControl fullWidth size="small">
-          <InputLabel>{column.header}</InputLabel>
-          <Select
-            value={filterValue === undefined || filterValue === null ? '' : filterValue}
-            label={column.header}
-            onChange={(e) => {
-              const newValue = e.target.value;
+        <Autocomplete
+          value={filterValue === undefined || filterValue === null ? null : filterValue}
+          onChange={(_, newValue) => {
               // Update local state
               setFilterValues(prev => ({
                 ...prev,
                 [columnId]: newValue
               }));
-              // Set the filter value
-              columnInstance.setFilterValue(newValue);
+            // Set the filter value - empty string is used to clear filter
+            columnInstance.setFilterValue(newValue === null ? '' : newValue);
               // Force immediate filtering
               table.getFilteredRowModel();
             }}
-            displayEmpty
-            renderValue={(selected) => {
-              if (!selected) return <em>All</em>;
-              return <Typography>{selected}</Typography>;
-            }}
-            MenuProps={{
-              PaperProps: {
-                style: {
-                  maxHeight: 48 * 4.5,
-                  width: 'auto',
-                },
-              },
-            }}
-          >
-            <MenuItem value="">
-              <em>All</em>
-            </MenuItem>
-            {uniqueValues.map((value: any) => (
-              <MenuItem key={value} value={value}>
-                {value}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+          options={uniqueValues}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label={column.header}
+              fullWidth
+              size="small"
+              placeholder="Type or select a value"
+            />
+          )}
+          size="small"
+          fullWidth
+          freeSolo
+          selectOnFocus
+          clearOnBlur
+          handleHomeEndKeys
+          renderOption={(props, option) => (
+            <li {...props}>
+              {option}
+            </li>
+          )}
+          disableClearable={false}
+          filterOptions={(options, state) => {
+            // Implement custom filtering for large lists
+            if (state.inputValue === '') {
+              return options.slice(0, 100); // Show first 100 options when input is empty
+            }
+            
+            // Filter options by input value
+            const filtered = options.filter(option => 
+              option.toString().toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            return filtered.slice(0, 100); // Limit to 100 matching options
+          }}
+          ListboxProps={{
+            style: { maxHeight: '200px' }
+          }}
+        />
       );
     }
     
@@ -203,13 +230,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         }
       }
       
+      // Initialize range filter value
+      const rangeValue = filterValue || [min, max];
+      
       return (
         <Box sx={{ px: 2, mt: 1 }}>
-          <Typography variant="body2">{column.header}</Typography>
+          <Typography variant="body2" gutterBottom>
+            {column.header}
+          </Typography>
+          
           <Box sx={{ px: 1 }}>
             <Slider
-              value={filterValue || [min, max]}
-              onChange={(_, newValue) => {
+              value={rangeValue}
+              onChange={(_, newValue: number | number[]) => {
                 // Update local state
                 setFilterValues(prev => ({
                   ...prev,
@@ -226,9 +259,49 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
               marks
               getAriaLabel={() => `${column.header} range`}
             />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="caption">{min}</Typography>
-              <Typography variant="caption">{max}</Typography>
+            
+            {/* Add min/max input fields */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1, gap: 2 }}>
+              <TextField
+                size="small"
+                type="number"
+                label="Min"
+                value={rangeValue[0]}
+                onChange={(e) => {
+                  const newValue = [parseFloat(e.target.value), rangeValue[1]];
+                  // Update local state
+                  setFilterValues(prev => ({
+                    ...prev,
+                    [columnId]: newValue
+                  }));
+                  // Set the filter value
+                  columnInstance.setFilterValue(newValue);
+                  // Force immediate filtering
+                  table.getFilteredRowModel();
+                }}
+                InputProps={{ inputProps: { min, max: rangeValue[1] } }}
+                sx={{ width: '45%' }}
+              />
+              <TextField
+                size="small"
+                type="number"
+                label="Max"
+                value={rangeValue[1]}
+                onChange={(e) => {
+                  const newValue = [rangeValue[0], parseFloat(e.target.value)];
+                  // Update local state
+                  setFilterValues(prev => ({
+                    ...prev,
+                    [columnId]: newValue
+                  }));
+                  // Set the filter value
+                  columnInstance.setFilterValue(newValue);
+                  // Force immediate filtering
+                  table.getFilteredRowModel();
+                }}
+                InputProps={{ inputProps: { min: rangeValue[0], max } }}
+                sx={{ width: '45%' }}
+              />
             </Box>
           </Box>
         </Box>
@@ -522,7 +595,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             onChange={() => setActiveSection('filters')}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Filters</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <FilterListIcon fontSize="small" sx={{ mr: 1 }} />
+                <Typography>Filter Options</Typography>
+              </Box>
             </AccordionSummary>
             <AccordionDetails>
               {filtersContent}
@@ -534,7 +610,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             onChange={() => setActiveSection('columns')}
           >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography>Columns</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <ViewColumnIcon fontSize="small" sx={{ mr: 1 }} />
+                <Typography>Column Visibility</Typography>
+              </Box>
             </AccordionSummary>
             <AccordionDetails>
               {columnsContent}

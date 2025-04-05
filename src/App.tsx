@@ -13,7 +13,7 @@ import {
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Index } from './pages/Index';
 import Upload from './pages/Upload';
 import './App.css';
@@ -39,19 +39,18 @@ function App() {
             <Toolbar>
               <Typography 
                 variant="h6" 
-                component={Link} 
-                to="/" 
+                onClick={() => window.location.href = '/'}
                 sx={{ 
                   flexGrow: 1, 
                   textDecoration: 'none', 
-                  color: 'inherit' 
+                  color: 'inherit',
+                  cursor: 'pointer'
                 }}
               >
                 Data Table
               </Typography>
               <Button 
-                component={Link} 
-                to="/upload" 
+                onClick={() => window.location.href = '/upload'}
                 startIcon={<UploadFileIcon />}
                 sx={{ mr: 2 }}
               >

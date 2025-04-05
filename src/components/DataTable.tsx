@@ -49,7 +49,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       if (columnDef.filterVariant === 'range') {
         columnDef.filterFn = 'range';
       } else {
-        columnDef.filterFn = 'fuzzy';
+        columnDef.filterFn = 'equals';
       }
     }
     

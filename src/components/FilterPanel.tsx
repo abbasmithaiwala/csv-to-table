@@ -460,24 +460,26 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       </Typography>
       
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-        {columns.map((column) => {
-          const columnInstance = table.getColumn(column.accessorKey);
-          if (!columnInstance) return null;
-          
-          const isVisible = columnInstance.getIsVisible();
-          
-          return (
-            <Chip
-              key={column.accessorKey}
-              label={column.header}
-              onClick={() => handleToggleColumnVisibility(columnInstance)}
-              variant={isVisible ? "filled" : "outlined"}
-              color={isVisible ? "primary" : "default"}
-              size="small"
-              sx={{ mb: 1 }}
-            />
-          );
-        })}
+        {columns
+          .filter(column => column.accessorKey !== 'mrt-row-select')
+          .map((column) => {
+            const columnInstance = table.getColumn(column.accessorKey);
+            if (!columnInstance) return null;
+            
+            const isVisible = columnInstance.getIsVisible();
+            
+            return (
+              <Chip
+                key={column.accessorKey}
+                label={column.header}
+                onClick={() => handleToggleColumnVisibility(columnInstance)}
+                variant={isVisible ? "filled" : "outlined"}
+                color={isVisible ? "primary" : "default"}
+                size="small"
+                sx={{ mb: 1 }}
+              />
+            );
+          })}
       </Box>
     </>
   );

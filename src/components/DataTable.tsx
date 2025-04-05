@@ -61,6 +61,12 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     return columnDef;
   });
 
+  // Get column order with selection column first if enabled
+  const columnOrder = [
+    ...(enableRowSelection ? ['mrt-row-select'] : []),
+    ...columnsWithFilterOptions.map(col => col.accessorKey as string)
+  ];
+
   const table = useMaterialReactTable({
     columns: columnsWithFilterOptions,
     data,
@@ -78,9 +84,19 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     enableColumnFilterModes: true,
     enableFilterMatchHighlighting: false,
     columnFilterDisplayMode: 'popover',
-    // Force column order to match the order they were defined in
+    initialState: { 
+      showGlobalFilter: enableGlobalFilter,
+      density: 'compact',
+      columnFilters: initialColumnFilters,
+      columnVisibility: initialColumnVisibility,
+      columnOrder,
+      sorting: columns.length > 0 ? [{ 
+        id: columns[0].accessorKey as string, 
+        desc: false 
+      }] : [],
+    },
     state: {
-      columnOrder: columnsWithFilterOptions.map(col => col.accessorKey as string),
+      columnOrder,
     },
     filterFns: {
       startsWith: (row, id, filterValue) => 
@@ -111,13 +127,6 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
         }
         return true;
       },
-    },
-    initialState: { 
-      showGlobalFilter: enableGlobalFilter,
-      density: 'compact',
-      columnFilters: initialColumnFilters,
-      columnVisibility: initialColumnVisibility,
-      sorting: columns.length > 0 ? [{ id: columns[0].accessorKey as string, desc: false }] : [],
     },
     // Display only filtered rows (important!)
     manualFiltering: false,

@@ -40,11 +40,26 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
   } = props;
 
   // Create columns with proper filter options
-  const columnsWithFilterOptions = columns.map(column => ({
-    ...column,
-    filterFn: 'fuzzy', // default filter function
-    enableColumnFilter: true,
-  }));
+  const columnsWithFilterOptions = columns.map(column => {
+    const columnDef = { ...column };
+    
+    // Set default filter function if not specified
+    if (!columnDef.filterFn) {
+      // Use range filter for numeric columns
+      if (columnDef.filterVariant === 'range') {
+        columnDef.filterFn = 'range';
+      } else {
+        columnDef.filterFn = 'fuzzy';
+      }
+    }
+    
+    // Ensure column filter is enabled by default
+    if (columnDef.enableColumnFilter === undefined) {
+      columnDef.enableColumnFilter = true;
+    }
+    
+    return columnDef;
+  });
 
   const table = useMaterialReactTable({
     columns: columnsWithFilterOptions,
@@ -83,6 +98,15 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
         String(row.getValue(id))
           .toLowerCase()
           .includes(String(filterValue).toLowerCase()),
+      range: (row, id, filterValue) => {
+        // Handle range filter values (for numeric fields like age)
+        if (Array.isArray(filterValue) && filterValue.length === 2) {
+          const value = Number(row.getValue(id));
+          const [min, max] = filterValue;
+          return !isNaN(value) && value >= min && value <= max;
+        }
+        return true;
+      },
     },
     initialState: { 
       showGlobalFilter: enableGlobalFilter,

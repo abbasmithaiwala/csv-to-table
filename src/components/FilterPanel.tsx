@@ -69,7 +69,13 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       
       // First set all values to empty/default
       filterableColumns.forEach(column => {
-        newFilterValues[column.accessorKey] = '';
+        // Initialize range filters with [min, max] by default
+        if (column.filterVariant === 'range' || getFilterType(column) === 'range') {
+          // We'll set proper min/max values when the component renders
+          newFilterValues[column.accessorKey] = null;
+        } else {
+          newFilterValues[column.accessorKey] = '';
+        }
       });
       
       // Then apply any active filters from the table state
@@ -217,6 +223,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
               valueLabelDisplay="auto"
               min={min}
               max={max}
+              marks
+              getAriaLabel={() => `${column.header} range`}
             />
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="caption">{min}</Typography>
@@ -360,6 +368,12 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
     
     // First check if the column has a specified filter variant
     if (column.filterVariant) return column.filterVariant;
+    
+    // Check if it's a specific column that should be a range filter (like age)
+    const numericColumns = ['age', 'price', 'amount', 'quantity'];
+    if (numericColumns.includes(column.accessorKey.toLowerCase())) {
+      return 'range';
+    }
     
     // Get all rows before any filtering
     const allRows = table.getCoreRowModel().rows;

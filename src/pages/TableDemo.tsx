@@ -27,6 +27,8 @@ export const TableDemo: React.FC = () => {
     createColumn('age', 'Age', { 
       enableSorting: true,
       enableColumnFilter: true,
+      filterVariant: 'range',
+      filterFn: 'range',
     }),
     createColumn('city', 'City', { 
       enableColumnFilter: true,

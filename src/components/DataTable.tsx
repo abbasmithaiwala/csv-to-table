@@ -90,14 +90,12 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       columnFilters: initialColumnFilters,
       columnVisibility: initialColumnVisibility,
       columnOrder,
-      sorting: columns.length > 0 ? [{ 
-        id: columns[0].accessorKey as string, 
-        desc: false 
-      }] : [],
+      sorting: [],
     },
     state: {
       columnOrder,
     },
+    enableSorting: false,
     filterFns: {
       startsWith: (row, id, filterValue) => 
         String(row.getValue(id))

@@ -3,26 +3,26 @@ import { Box, Button, Tooltip } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { MRT_Row } from 'material-react-table';
+import type { MRT_TableInstance, MRT_ColumnDef, MRT_Row } from 'material-react-table';
 
-interface ExportButtonsProps {
-  table: any;
-  columns: any[];
+interface ExportButtonsProps<TData extends Record<string, any>> {
+  table: MRT_TableInstance<TData>;
+  columns: MRT_ColumnDef<TData>[];
 }
 
-export const ExportButtons = <T extends Record<string, any>>({ 
+export const ExportButtons = <TData extends Record<string, any>>({ 
   table, 
   columns 
-}: ExportButtonsProps) => {
+}: ExportButtonsProps<TData>) => {
   // Handle exporting rows to PDF
-  const handleExportRows = (rows: MRT_Row<T>[]) => {
+  const handleExportRows = (rows: MRT_Row<TData>[]) => {
     const doc = new jsPDF();
     const tableData = rows.map((row) => {
       const dataRow: any[] = [];
       // Only include visible columns
       columns.forEach((column) => {
         if (column.accessorKey && table.getColumn(column.accessorKey)?.getIsVisible()) {
-          const value = row.getValue(column.accessorKey);
+          const value = row.getValue(column.accessorKey as string);
           dataRow.push(value);
         }
       });
@@ -81,7 +81,7 @@ export const ExportButtons = <T extends Record<string, any>>({
       handleExportRows(table.getSelectedRowModel().rows);
     } else {
       // Otherwise export all filtered rows
-      handleExportRows(table.getFilteredRowModel().rows);
+      handleExportRows(table.getFilteredRowModel().rows as MRT_Row<TData>[]);
     }
   };
 

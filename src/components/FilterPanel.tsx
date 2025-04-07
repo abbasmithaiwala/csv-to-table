@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -24,69 +24,246 @@ import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import { type MRT_ColumnDef, type MRT_Column, type MRT_TableInstance } from 'material-react-table';
 
-// Define the types for the filter panel props
-interface FilterPanelProps {
-  columns: any[];
-  table: any;
+// Type for column filters
+interface ColumnFilter {
+  id: string;
+  value: any;
+}
+interface FilterPanelProps<TData extends Record<string, any>> {
+  columns: MRT_ColumnDef<TData>[];
+  table: MRT_TableInstance<TData> | null;
   title?: string;
 }
 
-export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title = 'FILTER SETTING' }) => {
+export const FilterPanel = <TData extends Record<string, any>>({
+  columns,
+  table,
+  title = 'FILTER SETTING',
+}: FilterPanelProps<TData>): React.ReactElement => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // State for mobile drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
   
-  // State for group by selection
-  // const [groupBySelections, setGroupBySelections] = useState<string[]>([]);
-  
   // State for active section (used on mobile)
   const [activeSection, setActiveSection] = useState<'filters' | 'columns'>('filters');
   
-  // State to track filter values for UI rendering
-  const [filterValues, setFilterValues] = useState<Record<string, any>>({});
-  
-  // Get only filterable columns
-  const filterableColumns = columns.filter(column => 
-    column.enableColumnFilter !== false && 
-    column.accessorKey
-  );
-
   // Check if table instance is available
   const isTableReady = !!table;
+  
+  // Get only filterable columns - memoized to prevent recalculation
+  const filterableColumns = useMemo(() => 
+    columns.filter(column => 
+      column.enableColumnFilter !== false && 
+      column.accessorKey
+    ), 
+    [columns]
+  );
 
-  // Update local state when table filters change
-  useEffect(() => {
-    if (isTableReady) {
-      const currentFilters = table.getState().columnFilters;
-      const newFilterValues: Record<string, any> = {};
+  // Determine filter type for each column - memoized to avoid recalculation
+  const getFilterType = useMemo(() => {
+    return (column: MRT_ColumnDef<TData>) => {
+      if (!isTableReady || !table) return 'text';
       
-      // First set all values to empty/default
-      filterableColumns.forEach(column => {
-        // Initialize numeric filters with empty value
-        if (column.filterVariant === 'range' || getFilterType(column) === 'range') {
-          newFilterValues[column.accessorKey] = '';
-        } else if (getFilterType(column) === 'select') {
-          // Initialize select filters with empty array
-          newFilterValues[column.accessorKey] = [];
-        } else {
-          newFilterValues[column.accessorKey] = '';
+      // First check if the column has a specified filter variant
+      if (column.filterVariant) return column.filterVariant;
+      
+      // Check if it's a specific column that should be a numeric filter
+      const numericColumns = ['age', 'price', 'amount', 'quantity'];
+      if (typeof column.accessorKey === 'string' && numericColumns.includes(column.accessorKey.toLowerCase())) {
+        return 'range';
+      }
+      
+      // Get all rows before any filtering
+      const allRows = table.getCoreRowModel().rows;
+      if (allRows.length === 0) return 'text';
+      
+      // Get value from first row to determine type
+      const accessorKey = column.accessorKey as string;
+      const value = allRows[0].getValue(accessorKey);
+      
+      if (typeof value === 'number') return 'range';
+      if (typeof value === 'string') {
+        // For strings, check if there are few unique values (categorical)
+        const uniqueValues = new Set(
+          allRows.map(row => row.getValue(accessorKey))
+        );
+        
+        // If there are relatively few unique values compared to data size,
+        // treat it as a categorical column with select filter
+        if (uniqueValues.size <= 20 || uniqueValues.size <= allRows.length * 0.2) {
+          return 'select';
+        }
+      }
+      
+      // Default to text
+      return 'text';
+    };
+  }, [isTableReady, table]);
+
+  // Initialize column filter types - memoized to prevent recalculation
+  const columnFilterTypes = useMemo(() => {
+    if (!isTableReady || !table) return {};
+    
+    const types: Record<string, string> = {};
+    filterableColumns.forEach(column => {
+      if (typeof column.accessorKey === 'string') {
+        types[column.accessorKey] = getFilterType(column);
+      }
+    });
+    return types;
+  }, [isTableReady, filterableColumns, getFilterType, table]);
+  
+  // Helper function to get current filter values from table state
+  const getCurrentFilterValues = () => {
+    if (!isTableReady || !table) return {};
+    
+    const currentFilters = table.getState().columnFilters;
+    const newFilterValues: Record<string, any> = {};
+    
+    // First set all values to empty/default
+    filterableColumns.forEach(column => {
+      if (typeof column.accessorKey !== 'string') return;
+      
+      const filterType = columnFilterTypes[column.accessorKey] || 'text';
+      if (filterType === 'range' || column.filterVariant === 'range') {
+        newFilterValues[column.accessorKey] = '';
+      } else if (filterType === 'select') {
+        newFilterValues[column.accessorKey] = [];
+      } else {
+        newFilterValues[column.accessorKey] = '';
+      }
+    });
+    
+    // Then apply any active filters from the table state
+    currentFilters.forEach((filter: ColumnFilter) => {
+      newFilterValues[filter.id] = filter.value;
+    });
+    
+    return newFilterValues;
+  };
+
+  // Initialize and update filter values based on current table state
+  const [filterValues, setFilterValues] = useState<Record<string, any>>(() => {
+    if (!isTableReady || !table) return {};
+    
+    // Load saved filters if no filters are already applied
+    const currentFilters = table.getState().columnFilters;
+    if (currentFilters.length === 0) {
+      try {
+        const savedFilters = localStorage.getItem('tableFilters');
+        if (savedFilters) {
+          const parsedFilters = JSON.parse(savedFilters);
+          // Apply saved filters to the table
+          parsedFilters.forEach((filter: ColumnFilter) => {
+            const column = table.getColumn(filter.id);
+            if (column) {
+              column.setFilterValue(filter.value);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error loading saved filters:', error);
+      }
+    }
+    
+    // Initialize with current table filter state
+    return getCurrentFilterValues();
+  });
+  
+  // Function to update filter values from table state when needed
+  const refreshFilterValues = () => {
+    setFilterValues(getCurrentFilterValues());
+  };
+
+  // Handle search button click
+  const handleSearch = () => {
+    if (isTableReady && table) {
+      // Get current filters
+      const currentFilters = table.getState().columnFilters;
+      
+      // Apply current filters
+      currentFilters.forEach((filter: ColumnFilter) => {
+        const column = table.getColumn(filter.id);
+        if (column) {
+          column.setFilterValue(filter.value);
         }
       });
       
-      // Then apply any active filters from the table state
-      currentFilters.forEach((filter: any) => {
-        newFilterValues[filter.id] = filter.value;
-      });
+      // Force update the filtered model
+      table.getFilteredRowModel();
       
-      setFilterValues(newFilterValues);
+      // Update local state with current filter values
+      refreshFilterValues();
     }
-  }, [isTableReady, table, filterableColumns]);
+    
+    // Close mobile drawer if needed
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+  };
+
+  // Handle save button click
+  const handleSave = () => {
+    if (!isTableReady || !table) return;
+    
+    // Ensure filters are applied from our local state
+    Object.entries(filterValues).forEach(([columnId, value]) => {
+      const column = table.getColumn(columnId);
+      if (column) {
+        column.setFilterValue(value);
+      }
+    });
+    
+    // Save filter state
+    const filterState = table.getState().columnFilters;
+    localStorage.setItem('tableFilters', JSON.stringify(filterState));
+    alert('Filters saved successfully');
+  };
+
+  // Reset all filters
+  const handleResetFilters = () => {
+    if (!isTableReady || !table) return;
+    
+    // Clear all filters
+    table.resetColumnFilters();
+    
+    // Clear local filter values state
+    setFilterValues({});
+    
+    // Force immediate filtering to show all rows
+    table.getFilteredRowModel();
+
+    // Explicitly clear all column filter values in the table
+    filterableColumns.forEach(column => {
+      if (typeof column.accessorKey === 'string') {
+        const columnInstance = table.getColumn(column.accessorKey);
+        if (columnInstance) {
+          columnInstance.setFilterValue('');
+        }
+      }
+    });
+    
+    // Remove from localStorage
+    localStorage.removeItem('tableFilters');
+    
+    // Update local state with current filter values
+    refreshFilterValues();
+  };
+
+  // Toggle column visibility
+  const handleToggleColumnVisibility = (column: MRT_Column<TData>) => {
+    if (!isTableReady || !table) return;
+    column.toggleVisibility();
+  };
 
   // Define the types of filters
-  const getFilterComponent = (columnType: string, column: any, columnInstance: any) => {
+  const getFilterComponent = (columnType: string, column: MRT_ColumnDef<TData>, columnInstance: MRT_Column<TData>) => {
+    if (typeof column.accessorKey !== 'string') return null;
+    
     // Get filter value from our local state or from the column instance
     const columnId = column.accessorKey;
     const filterValue = filterValues[columnId] !== undefined 
@@ -99,7 +276,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <TextField
           size="small"
           fullWidth
-          label={column.header}
+          label={typeof column.header === 'string' ? column.header : String(column.accessorKey)}
           value={filterValue === undefined || filterValue === null ? '' : filterValue}
           onChange={(e) => {
             const newValue = e.target.value;
@@ -111,7 +288,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             // Set the filter value
             columnInstance.setFilterValue(newValue);
             // Force immediate filtering
-            table.getFilteredRowModel();
+            if (table) table.getFilteredRowModel();
           }}
           variant="outlined"
           placeholder="Type to filter..."
@@ -126,7 +303,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
                     [columnId]: ''
                   }));
                   columnInstance.setFilterValue('');
-                  table.getFilteredRowModel();
+                  if (table) table.getFilteredRowModel();
                 }}
                 edge="end"
               >
@@ -143,14 +320,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       // Get unique values from the entire data set for this column
       let uniqueValues: any[] = [];
       
-      if (isTableReady) {
+      if (isTableReady && table) {
         // Get all rows before any filtering
         const allRows = table.getCoreRowModel().rows;
         
         // Extract unique values from all rows for this column
         uniqueValues = Array.from(
           new Set(
-            allRows.map((row: any) => row.getValue(column.accessorKey))
+            allRows.map(row => row.getValue(columnId))
           )
         ).filter(Boolean).sort();
       }
@@ -168,13 +345,13 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             // Set the filter value - empty string is used to clear filter
             columnInstance.setFilterValue(newValue === null ? '' : newValue);
             // Force immediate filtering
-            table.getFilteredRowModel();
+            if (table) table.getFilteredRowModel();
           }}
           options={uniqueValues}
           renderInput={(params) => (
             <TextField
               {...params}
-              label={column.header}
+              label={typeof column.header === 'string' ? column.header : String(column.accessorKey)}
               fullWidth
               size="small"
               placeholder="Select value(s)"
@@ -185,11 +362,15 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
           selectOnFocus
           clearOnBlur
           handleHomeEndKeys
-          renderOption={(props, option) => (
-            <li {...props}>
-              {option}
-            </li>
-          )}
+          renderOption={(props, option) => {
+            // Extract key from props and remove it from props that will be spread
+            const { key, ...propsWithoutKey } = props;
+            return (
+              <li key={key || option} {...propsWithoutKey}>
+                {option}
+              </li>
+            );
+          }}
           disableCloseOnSelect
           filterOptions={(options, state) => {
             // Implement custom filtering for large lists
@@ -216,7 +397,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         <TextField
           size="small"
           fullWidth
-          label={`${column.header}`}
+          label={typeof column.header === 'string' ? column.header : String(column.accessorKey)}
           type="number"
           value={filterValue === undefined || filterValue === null ? '' : filterValue}
           onChange={(e) => {
@@ -228,12 +409,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             }));
             // Set the filter value
             columnInstance.setFilterValue(newValue);
-            // Ensure filter function is set to range
-            if (column.filterFn !== 'range') {
-              columnInstance.setFilterFn('range');
-            }
             // Force immediate filtering
-            table.getFilteredRowModel();
+            if (table) table.getFilteredRowModel();
           }}
           variant="outlined"
           placeholder="Enter value"
@@ -248,7 +425,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
                     [columnId]: ''
                   }));
                   columnInstance.setFilterValue('');
-                  table.getFilteredRowModel();
+                  if (table) table.getFilteredRowModel();
                 }}
                 edge="end"
               >
@@ -279,7 +456,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       <TextField
         size="small"
         fullWidth
-        label={column.header}
+        label={typeof column.header === 'string' ? column.header : String(column.accessorKey)}
         value={filterValue === undefined || filterValue === null ? '' : filterValue}
         onChange={(e) => {
           const newValue = e.target.value;
@@ -291,152 +468,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
           // Set the filter value
           columnInstance.setFilterValue(newValue);
           // Force immediate filtering
-          table.getFilteredRowModel();
+          if (table) table.getFilteredRowModel();
         }}
         variant="outlined"
       />
     );
-  };
-
-  // Load saved filters when the component mounts and table is ready
-  useEffect(() => {
-    if (isTableReady) {
-      try {
-        // We only need to apply filters here if they're not already applied via initialState
-        // Check if any filters are already applied
-        const currentFilters = table.getState().columnFilters;
-        if (currentFilters && currentFilters.length > 0) {
-          // Filters are already applied via initialState, so we don't need to do anything
-          return;
-        }
-        
-        const savedFilters = localStorage.getItem('tableFilters');
-        if (savedFilters) {
-          const parsedFilters = JSON.parse(savedFilters);
-          // Apply saved filters to the table
-          parsedFilters.forEach((filter: any) => {
-            const column = table.getColumn(filter.id);
-            if (column) {
-              column.setFilterValue(filter.value);
-            }
-          });
-        }
-      } catch (error) {
-        console.error('Error loading saved filters:', error);
-      }
-    }
-  }, [isTableReady, table]);
-
-  // Handle search button click
-  const handleSearch = () => {
-    if (isTableReady) {
-      // Get current filters
-      const currentFilters = table.getState().columnFilters;
-      
-      // Apply current filters (this should now be redundant since we filter immediately on change)
-      // but keeping it ensures synchronization
-      currentFilters.forEach((filter: any) => {
-        const column = table.getColumn(filter.id);
-        if (column) {
-          column.setFilterValue(filter.value);
-        }
-      });
-      
-      // Force update the filtered model
-      table.getFilteredRowModel();
-    }
-    
-    // Close mobile drawer if needed
-    if (isMobile) {
-      setDrawerOpen(false);
-    }
-  };
-
-  // Handle save button click
-  const handleSave = () => {
-    if (!isTableReady) return;
-    
-    // Ensure filters are applied from our local state
-    Object.entries(filterValues).forEach(([columnId, value]) => {
-      const column = table.getColumn(columnId);
-      if (column) {
-        column.setFilterValue(value);
-      }
-    });
-    
-    // Save filter state
-    const filterState = table.getState().columnFilters;
-    localStorage.setItem('tableFilters', JSON.stringify(filterState));
-    alert('Filters saved successfully');
-  };
-
-  // Reset all filters
-  const handleResetFilters = () => {
-    if (!isTableReady) return;
-    
-    // Clear all filters
-    table.resetColumnFilters();
-    
-    // Clear local filter values state
-    setFilterValues({});
-    
-    // Force immediate filtering to show all rows
-    table.getFilteredRowModel();
-
-    // Explicitly clear all column filter values in the table
-    filterableColumns.forEach(column => {
-      const columnInstance = table.getColumn(column.accessorKey);
-      if (columnInstance) {
-        columnInstance.setFilterValue('');
-      }
-    });
-    
-    // Remove from localStorage
-    localStorage.removeItem('tableFilters');
-  };
-
-  // Toggle column visibility
-  const handleToggleColumnVisibility = (column: any) => {
-    if (!isTableReady) return;
-    column.toggleVisibility();
-  };
-
-  // Determine filter type for each column
-  const getFilterType = (column: any) => {
-    if (!isTableReady) return 'text';
-    
-    // First check if the column has a specified filter variant
-    if (column.filterVariant) return column.filterVariant;
-    
-    // Check if it's a specific column that should be a numeric filter (like age)
-    const numericColumns = ['age', 'price', 'amount', 'quantity'];
-    if (numericColumns.includes(column.accessorKey.toLowerCase())) {
-      return 'range';
-    }
-    
-    // Get all rows before any filtering
-    const allRows = table.getCoreRowModel().rows;
-    if (allRows.length === 0) return 'text';
-    
-    // Get value from first row to determine type
-    const value = allRows[0].getValue(column.accessorKey);
-    
-    if (typeof value === 'number') return 'range';
-    if (typeof value === 'string') {
-      // For strings, check if there are few unique values (categorical)
-      const uniqueValues = new Set(
-        allRows.map((row: any) => row.getValue(column.accessorKey))
-      );
-      
-      // If there are relatively few unique values compared to data size,
-      // treat it as a categorical column with select filter
-      if (uniqueValues.size <= 20 || uniqueValues.size <= allRows.length * 0.2) {
-        return 'select';
-      }
-    }
-    
-    // Default to text
-    return 'text';
   };
 
   // Loading/placeholder content when table is not ready
@@ -450,7 +486,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
   );
 
   // Filters content
-  const filtersContent = !isTableReady ? loadingContent : (
+  const filtersContent = !isTableReady || !table ? loadingContent : (
     <>
       <FormGroup sx={{ gap: 2 }}>
         {columns
@@ -460,12 +496,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
           )
           .map((column) => {
             // Get the column instance from the table
+            if (typeof column.accessorKey !== 'string') return null;
+            
             const columnInstance = table.getColumn(column.accessorKey);
             
             if (!columnInstance) return null;
             
-            // Determine the filter type
-            const filterType = getFilterType(column);
+            // Use cached filter type instead of recalculating
+            const filterType = columnFilterTypes[column.accessorKey] || 'text';
             
             // Render the appropriate filter component
             return (
@@ -479,7 +517,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
   );
 
   // Column management content
-  const columnsContent = !isTableReady ? loadingContent : (
+  const columnsContent = !isTableReady || !table ? loadingContent : (
     <>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="subtitle1">
@@ -500,8 +538,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
         {columns
-          .filter(column => column.accessorKey !== 'mrt-row-select')
+          .filter(column => typeof column.accessorKey === 'string' && column.accessorKey !== 'mrt-row-select')
           .map((column) => {
+            if (typeof column.accessorKey !== 'string') return null;
+            
             const columnInstance = table.getColumn(column.accessorKey);
             if (!columnInstance) return null;
             
@@ -510,7 +550,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
             return (
               <Chip
                 key={column.accessorKey}
-                label={column.header}
+                label={typeof column.header === 'string' ? column.header : String(column.accessorKey)}
                 onClick={() => handleToggleColumnVisibility(columnInstance)}
                 variant={isVisible ? "filled" : "outlined"}
                 color={isVisible ? "primary" : "default"}
@@ -550,7 +590,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       
       <Divider sx={{ mb: 2 }} />
       
-      {!isTableReady ? (
+      {!isTableReady || !table ? (
         // Show loading state when table is not ready
         loadingContent
       ) : isMobile ? (

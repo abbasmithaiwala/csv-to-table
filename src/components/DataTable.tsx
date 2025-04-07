@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
+import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef, type MRT_TableInstance } from 'material-react-table';
 import { Paper, Box } from '@mui/material';
 import { ExportButtons } from './ExportButtons';
 
@@ -15,10 +15,10 @@ export interface DataTableProps<TData extends Record<string, any>> {
   enableColumnResizing?: boolean;
   enableHiding?: boolean;
   enableGrouping?: boolean;
-  initialColumnFilters?: any[];
+  initialColumnFilters?: { id: string; value: any }[];
   initialColumnVisibility?: Record<string, boolean>;
-  renderTopToolbarCustomActions?: (props: { table: any }) => React.ReactNode;
-  onTableInstanceChange?: (tableInstance: any) => void;
+  renderTopToolbarCustomActions?: (props: { table: MRT_TableInstance<TData> }) => React.ReactNode;
+  onTableInstanceChange?: (tableInstance: MRT_TableInstance<TData>) => void;
 }
 
 export function DataTable<TData extends Record<string, any>>(props: DataTableProps<TData>) {
@@ -65,7 +65,9 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
   // Get column order with selection column first if enabled
   const columnOrder = [
     ...(enableRowSelection ? ['mrt-row-select'] : []),
-    ...columnsWithFilterOptions.map(col => col.accessorKey as string)
+    ...columnsWithFilterOptions
+      .filter(col => typeof col.accessorKey === 'string')
+      .map(col => col.accessorKey as string)
   ];
 
   const table = useMaterialReactTable({
@@ -122,7 +124,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
           return true;
         }
 
-        const value = row.getValue(id)
+        const value = row.getValue(id);
         // If value exists in the array of filter values, include this row
         
         return filterValue.includes(value);
@@ -173,10 +175,13 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       },
     },
     // Combine custom actions with export button
-    renderTopToolbarCustomActions: ({ table }: { table: any }) => (
+    renderTopToolbarCustomActions: ({ table }) => (
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         {renderTopToolbarCustomActions?.({ table })}
-        <ExportButtons table={table} columns={columnsWithFilterOptions} />
+        <ExportButtons 
+          table={table as MRT_TableInstance<TData>} 
+          columns={columnsWithFilterOptions as MRT_ColumnDef<TData>[]} 
+        />
       </Box>
     ),
   });

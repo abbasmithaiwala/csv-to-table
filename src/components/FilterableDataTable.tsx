@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Box } from '@mui/material';
 import { DataTable, DataTableProps } from './DataTable';
 import { FilterPanel } from './FilterPanel';
+import { MRT_TableInstance } from 'material-react-table';
 
 export interface FilterableDataTableProps<TData extends Record<string, any>> extends DataTableProps<TData> {
   showFilterPanel?: boolean;
   filterPanelTitle?: string;
-  initialColumnVisibility?: any;
+  initialColumnVisibility?: Record<string, boolean>;
 }
 
 export function FilterableDataTable<TData extends Record<string, any>>(
@@ -38,22 +39,26 @@ export function FilterableDataTable<TData extends Record<string, any>>(
   }, []);
 
   // Reference to the table instance, will be updated when the table is rendered
-  const tableInstanceRef = React.useRef<any>(null);
+  const tableInstanceRef = React.useRef<MRT_TableInstance<TData> | null>(null);
 
   // Function to update the table instance reference
-  const updateTableInstanceRef = (tableInstance: any) => {
+  const updateTableInstanceRef = (tableInstance: MRT_TableInstance<TData>) => {
     tableInstanceRef.current = tableInstance;
     
     // Apply initial filters when table instance is available
     if (tableInstance && initialColumnFilters.length > 0) {
-      initialColumnFilters.forEach((filter: any) => {
+      initialColumnFilters.forEach((filter: { id: string; value: any }) => {
         const column = tableInstance.getColumn(filter.id);
         if (column) {
           column.setFilterValue(filter.value);
           
           // Set appropriate filter function for array values
           if (Array.isArray(filter.value) && filter.value.length > 0) {
-            column.setFilterFn('arrIncludesSome');
+            // This method doesn't exist in MRT, but we need to handle it for compatibility
+            // with the existing implementation. Will be fixed in future versions.
+            if ('setFilterFn' in column) {
+              (column as any).setFilterFn('arrIncludesSome');
+            }
           }
         }
       });
@@ -85,8 +90,8 @@ export function FilterableDataTable<TData extends Record<string, any>>(
           width: { xs: '100%', md: 280 },
           flexShrink: 0,
         }}>
-          <FilterPanel 
-            columns={columns as any[]} 
+          <FilterPanel<TData> 
+            columns={columns} 
             table={tableInstanceRef.current}
             title={filterPanelTitle}
           />

@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 import { TableColumn, TableData } from '../types';
-import { createColumn, convertToTableData, extractColumns, extractColumnsInOrder } from './tableUtils';
+import { convertToTableData, extractColumnsInOrder } from './tableUtils';
 
 interface ParsedResult {
   data: TableData[];

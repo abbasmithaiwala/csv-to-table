@@ -50,6 +50,11 @@ export function FilterableDataTable<TData extends Record<string, any>>(
         const column = tableInstance.getColumn(filter.id);
         if (column) {
           column.setFilterValue(filter.value);
+          
+          // Set appropriate filter function for array values
+          if (Array.isArray(filter.value) && filter.value.length > 0) {
+            column.setFilterFn('arrIncludesSome');
+          }
         }
       });
       

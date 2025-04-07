@@ -50,7 +50,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       if (columnDef.filterVariant === 'range') {
         columnDef.filterFn = 'range';
       } else {
-        columnDef.filterFn = 'startsWith';
+        columnDef.filterFn = 'arrIncludesSome';
       }
     }
     
@@ -116,6 +116,18 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
         String(row.getValue(id))
           .toLowerCase()
           .includes(String(filterValue).toLowerCase()),
+      arrIncludesSome: (row, id, filterValue) => {
+        // If filterValue is not an array or is empty, show all rows
+        if (!Array.isArray(filterValue) || !filterValue.length) {
+          return true;
+        }
+
+        const value = row.getValue(id)
+        // If value exists in the array of filter values, include this row
+        
+        return filterValue.includes(value);
+        
+      },
       range: (row, id, filterValue) => {
         // Handle empty values - show all rows
         if (filterValue === undefined || filterValue === null || filterValue === '') {
@@ -161,7 +173,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
       },
     },
     // Combine custom actions with export button
-    renderTopToolbarCustomActions: ({ table }) => (
+    renderTopToolbarCustomActions: ({ table }: { table: any }) => (
       <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         {renderTopToolbarCustomActions?.({ table })}
         <ExportButtons table={table} columns={columnsWithFilterOptions} />

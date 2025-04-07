@@ -68,6 +68,9 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
         // Initialize numeric filters with empty value
         if (column.filterVariant === 'range' || getFilterType(column) === 'range') {
           newFilterValues[column.accessorKey] = '';
+        } else if (getFilterType(column) === 'select') {
+          // Initialize select filters with empty array
+          newFilterValues[column.accessorKey] = [];
         } else {
           newFilterValues[column.accessorKey] = '';
         }
@@ -154,7 +157,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
       
       return (
         <Autocomplete
-          value={filterValue === undefined || filterValue === null ? null : filterValue}
+          multiple
+          value={Array.isArray(filterValue) ? filterValue : (filterValue ? [filterValue] : [])}
           onChange={(_, newValue) => {
             // Update local state
             setFilterValues(prev => ({
@@ -173,12 +177,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
               label={column.header}
               fullWidth
               size="small"
-              placeholder="Type or select a value"
+              placeholder="Select value(s)"
             />
           )}
           size="small"
           fullWidth
-          freeSolo
           selectOnFocus
           clearOnBlur
           handleHomeEndKeys
@@ -187,7 +190,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({ columns, table, title 
               {option}
             </li>
           )}
-          disableClearable={false}
+          disableCloseOnSelect
           filterOptions={(options, state) => {
             // Implement custom filtering for large lists
             if (state.inputValue === '') {

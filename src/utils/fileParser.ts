@@ -9,7 +9,7 @@ interface ParsedResult {
 }
 
 /**
- * Parse a CSV or Excel file and return the data and columns
+ * Parse a CSV or Excel file and return the data and columnsW
  * @param file The file to parse
  * @returns Promise with ParsedResult containing data and columns
  */

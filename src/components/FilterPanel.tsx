@@ -228,16 +228,7 @@ export const FilterPanel = <TData extends Record<string, any>>({
   const handleResetFilters = () => {
     if (!isTableReady || !table) return;
     
-    // Clear all filters
-    table.resetColumnFilters();
-    
-    // Clear local filter values state
-    setFilterValues({});
-    
-    // Force immediate filtering to show all rows
-    table.getFilteredRowModel();
-
-    // Explicitly clear all column filter values in the table
+    // First explicitly clear all column filter values in the table
     filterableColumns.forEach(column => {
       if (typeof column.accessorKey === 'string') {
         const columnInstance = table.getColumn(column.accessorKey);
@@ -247,11 +238,32 @@ export const FilterPanel = <TData extends Record<string, any>>({
       }
     });
     
+    // Clear all filters in the table state
+    table.resetColumnFilters();
+    
+    // Initialize empty filter values based on filter types
+    const emptyFilterValues: Record<string, any> = {};
+    filterableColumns.forEach(column => {
+      if (typeof column.accessorKey !== 'string') return;
+      
+      const filterType = columnFilterTypes[column.accessorKey] || 'text';
+      if (filterType === 'range' || column.filterVariant === 'range') {
+        emptyFilterValues[column.accessorKey] = '';
+      } else if (filterType === 'select') {
+        emptyFilterValues[column.accessorKey] = [];
+      } else {
+        emptyFilterValues[column.accessorKey] = '';
+      }
+    });
+    
+    // Set the empty filter values
+    setFilterValues(emptyFilterValues);
+    
+    // Force immediate filtering to show all rows
+    table.getFilteredRowModel();
+    
     // Remove from localStorage
     localStorage.removeItem('tableFilters');
-    
-    // Update local state with current filter values
-    refreshFilterValues();
   };
 
   // Toggle column visibility

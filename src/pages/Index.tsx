@@ -88,27 +88,13 @@ export const Index: React.FC = () => {
         enableFullScreenToggle
         enableColumnResizing
         filterPanelTitle="Filters"
-        renderTopToolbarCustomActions={({ table }) => {
-          const selectedRows = table.getSelectedRowModel().rows;
+        renderTopToolbarCustomActions={() => {
           return (
             <Box sx={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
               <Typography variant="h6" sx={{ mr: 2, display: { xs: 'none', sm: 'block' } }}>
                 Uploaded Data
               </Typography>
               
-              <Button
-                variant="contained" 
-                color="primary"
-                disabled={!selectedRows.length}
-                onClick={() => {
-                  const exportData = selectedRows.map((row: any) => row.original);
-                  console.log('Selected Rows:', exportData);
-                  alert(`Selected ${selectedRows.length} rows.`);
-                }}
-                size="small"
-              >
-                Export ({selectedRows.length})
-              </Button>
             </Box>
           );
         }}

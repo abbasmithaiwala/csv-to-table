@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { MaterialReactTable, useMaterialReactTable, type MRT_ColumnDef } from 'material-react-table';
-import { Paper } from '@mui/material';
+import { Paper, Box } from '@mui/material';
+import { ExportButtons } from './ExportButtons';
 
 export interface DataTableProps<TData extends Record<string, any>> {
   data: TData[];
@@ -32,7 +33,7 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     enableFullScreenToggle = true,
     enableColumnResizing = true,
     enableHiding = true,
-    enableGrouping = false,
+    enableGrouping = true,
     initialColumnFilters = [],
     initialColumnVisibility = {},
     renderTopToolbarCustomActions,
@@ -159,7 +160,13 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
         },
       },
     },
-    renderTopToolbarCustomActions,
+    // Combine custom actions with export button
+    renderTopToolbarCustomActions: ({ table }) => (
+      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        {renderTopToolbarCustomActions?.({ table })}
+        <ExportButtons table={table} columns={columnsWithFilterOptions} />
+      </Box>
+    ),
   });
 
   // Call the onTableInstanceChange callback when the table instance changes

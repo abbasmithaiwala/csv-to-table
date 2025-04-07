@@ -95,7 +95,6 @@ export function DataTable<TData extends Record<string, any>>(props: DataTablePro
     state: {
       columnOrder,
     },
-    enableSorting: false,
     filterFns: {
       startsWith: (row, id, filterValue) => 
         String(row.getValue(id))
